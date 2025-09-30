@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "setup": "cd backend && composer install && cp .env.example .env && touch database/database.sqlite && cd ../frontend && npm install && cp .env.example .env",
+    "dev": "concurrently \"cd backend && php artisan serve\" \"cd frontend && npm start\"",
+    "build": "cd frontend && npm run build",
+    "docker:dev": "docker-compose up -d",
+    "docker:prod": "docker-compose --profile production up -d",
+    "docker:down": "docker-compose down",
+    "test": "cd backend && php artisan test && cd ../frontend && npm test",
+    "lint": "cd frontend && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
