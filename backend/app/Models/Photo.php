@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Storage;
 
 class Photo extends Model
 {
@@ -27,6 +28,9 @@ class Photo extends Model
         'height' => 'integer',
     ];
 
+    // Ensure 'url' accessor is included when model is serialized to array/json
+    protected $appends = ['url'];
+
     /**
      * Get the user that owns the photo
      */
@@ -40,6 +44,11 @@ class Photo extends Model
      */
     public function getUrlAttribute(): string
     {
-        return asset('storage/' . $this->path);
+        // Use the public disk to generate a URL. Falls back to asset helper.
+        try {
+            return Storage::disk('public')->url($this->path);
+        } catch (\Throwable $e) {
+            return asset('storage/' . $this->path);
+        }
     }
 }

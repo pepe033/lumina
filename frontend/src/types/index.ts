@@ -34,6 +34,11 @@ export interface PhotoResponse {
   photo: Photo;
 }
 
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+}
+
 // Form Types
 export interface LoginForm {
   email: string;
@@ -47,22 +52,16 @@ export interface RegisterForm {
   password_confirmation: string;
 }
 
+// Component Props
+export interface PhotoUploadProps {
+  onUploadSuccess?: (photo: Photo) => void;
+}
+
 // Editor Types
 export interface EditorState {
   brightness: number;
   contrast: number;
   saturation: number;
   rotation: number;
-  crop: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null;
-}
-
-export interface Filter {
-  id: string;
-  name: string;
-  description: string;
+  scale: number;
 }
