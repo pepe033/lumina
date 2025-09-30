@@ -8,6 +8,11 @@ use App\Http\Controllers\PhotoEditController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\DebugController;
 
+// Public health endpoint (GET /api/health)
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');

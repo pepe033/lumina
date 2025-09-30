@@ -12,9 +12,14 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api
+      - REACT_APP_API_URL=http://backend:8000/api
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # Backend Laravel API
   backend:
@@ -30,16 +35,11 @@ services:
       - APP_DEBUG=true
       - DB_CONNECTION=sqlite
       - DB_DATABASE=/var/www/html/database/database.sqlite
-    depends_on:
-      - database
-
-  # Database
-  database:
-    image: sqlite:latest
-    volumes:
-      - ./backend/database:/database
-    environment:
-      - SQLITE_DATABASE=database.sqlite
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # Nginx for production
   nginx:

@@ -1,157 +1,224 @@
 # Lumina Photo Editor
 
-Lumina is a modern web-based photo editing application built with ReactJS frontend and Laravel backend. It allows users to upload, edit, and manage their photos online with various editing tools and filters.
+Lumina to nowoczesna aplikacja webowa do edycji zdjęć, zbudowana z użyciem frontendowego Reacta (TypeScript) oraz backendu w Laravelu. Umożliwia użytkownikom przesyłanie, edytowanie i zarządzanie zdjęciami online przy użyciu narzędzi takich jak regulacja jasności, kontrastu, nasycenia oraz zestawu filtrów.
 
-## Features
+## Funkcje
 
-- **User Authentication**: Register and login functionality
-- **Photo Upload**: Upload photos with support for multiple formats
-- **Photo Editor**: Edit photos with brightness, contrast, saturation adjustments
-- **Filters**: Apply various filters to enhance photos
-- **Photo Management**: View, organize, and delete photos
-- **Responsive Design**: Works on desktop and mobile devices
+- **Uwierzytelnianie użytkowników**: rejestracja i logowanie
+- **Przesyłanie zdjęć**: upload plików (wielu formatów)
+- **Edytor zdjęć**: regulacja jasności, kontrastu, nasycenia itp.
+- **Filtry**: zastosowanie predefiniowanych efektów
+- **Zarządzanie zdjęciami**: wyświetlanie, organizowanie i usuwanie zdjęć
+- **Responsywny interfejs**: działa na desktopie i urządzeniach mobilnych
 
-## Tech Stack
+## Stos technologiczny
 
 ### Frontend
-- **React 18** with TypeScript
-- **Tailwind CSS** for styling
-- **React Router** for navigation
-- **Axios** for API communication
-- **Headless UI & Heroicons** for UI components
+- React 18 z TypeScript
+- Tailwind CSS do stylowania
+- React Router do nawigacji
+- Axios do komunikacji z API
+- Headless UI i Heroicons (opcjonalnie)
 
 ### Backend
-- **Laravel 11** PHP framework
-- **Laravel Sanctum** for API authentication
-- **SQLite** database (easily configurable for other databases)
-- **RESTful API** architecture
+- Laravel 11 (API)
+- Laravel Sanctum do uwierzytelniania API
+- SQLite domyślnie (łatwe przełączenie na inną bazę danych)
+- Architektura RESTful API
 
-## Project Structure
+## Struktura projektu
 
 ```
 lumina/
 ├── backend/                 # Laravel Backend API
 │   ├── app/
 │   │   ├── Http/
-│   │   │   └── Controllers/ # API Controllers
-│   │   ├── Models/          # Eloquent Models
-│   │   └── Services/        # Business Logic
-│   ├── config/              # Configuration files
-│   ├── database/            # Migrations, seeders, factories
-│   ├── routes/              # API routes
-│   └── storage/             # File storage
-├── frontend/                # React Frontend
+│   │   │   └── Controllers/ # Kontrolery API
+│   │   ├── Models/          # Modele Eloquent
+│   │   └── Services/        # Logika biznesowa (jeśli istnieje)
+│   ├── config/              # Pliki konfiguracyjne
+│   ├── database/            # Migracje, seedy, sqlite
+│   ├── routes/              # Trasy API i web
+│   └── storage/             # Przechowywanie plików
+├── frontend/                # Frontend React
 │   ├── src/
-│   │   ├── components/      # React components
-│   │   │   ├── Auth/        # Authentication components
-│   │   │   ├── Photo/       # Photo-related components
-│   │   │   ├── Editor/      # Photo editor components
-│   │   │   └── Layout/      # Layout components
-│   │   ├── pages/           # Page components
-│   │   ├── services/        # API services
-│   │   ├── hooks/           # Custom React hooks
-│   │   ├── types/           # TypeScript type definitions
-│   │   └── utils/           # Utility functions
-│   └── public/              # Static assets
-├── docker/                  # Docker configuration
-├── docs/                    # Documentation
-└── docker-compose.yml      # Docker Compose setup
+│   │   ├── components/      # Komponenty React
+│   │   ├── pages/           # Strony
+│   │   ├── services/        # Warstwa komunikacji z API
+│   │   └── types/           # Definicje TypeScript
+│   └── public/              # Zasoby statyczne
+├── docker/                  # Konfiguracje Docker / nginx
+├── README.md                # Ten plik
+└── docker-compose.yml      # Konfiguracja docker-compose
 ```
 
-## Quick Start
+> Uwaga: pełna struktura znajduje się w repozytorium (foldery `backend`, `frontend` i inne).
 
-### Prerequisites
-- Node.js 18+
-- PHP 8.2+
+## Szybki start
+
+### Wymagania
+- Node.js 18+ (frontend)
+- PHP 8.2+ (backend)
 - Composer
-- Docker (optional)
+- Docker (opcjonalnie)
 
-### Development Setup
+### Uruchomienie lokalne — backend
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/pepe033/lumina.git
-   cd lumina
-   ```
+1. Przejdź do katalogu backend:
 
-2. **Backend Setup**
-   ```bash
-   cd backend
-   composer install
-   cp .env.example .env
-   php artisan key:generate
-   touch database/database.sqlite
-   php artisan migrate
-   php artisan serve
-   ```
-
-3. **Frontend Setup**
-   ```bash
-   cd frontend
-   npm install
-   cp .env.example .env
-   npm start
-   ```
-
-### Docker Setup (Alternative)
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/v1/register` - Register new user
-- `POST /api/v1/login` - Login user
-- `POST /api/v1/logout` - Logout user
-
-### Photos
-- `GET /api/v1/photos` - Get user's photos
-- `POST /api/v1/photos` - Upload new photo
-- `GET /api/v1/photos/{id}` - Get specific photo
-- `PUT /api/v1/photos/{id}` - Update photo metadata
-- `DELETE /api/v1/photos/{id}` - Delete photo
-
-### Photo Editing
-- `POST /api/v1/photos/{id}/resize` - Resize photo
-- `POST /api/v1/photos/{id}/crop` - Crop photo
-- `POST /api/v1/photos/{id}/brightness` - Adjust brightness
-- `POST /api/v1/photos/{id}/contrast` - Adjust contrast
-- `POST /api/v1/photos/{id}/filter` - Apply filter
-
-## Development
-
-### Frontend Development
-```bash
-cd frontend
-npm start          # Start development server
-npm run build      # Build for production
-npm test           # Run tests
-```
-
-### Backend Development
 ```bash
 cd backend
-php artisan serve  # Start development server
-php artisan migrate # Run migrations
-php artisan test   # Run tests
 ```
 
-## Deployment
+2. Zainstaluj zależności PHP i przygotuj środowisko:
 
-### Production Build
 ```bash
-# Frontend
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate
+php artisan serve
+```
+
+Domyślnie backend będzie dostępny na http://127.0.0.1:8000
+
+### Uruchomienie lokalne — frontend
+
+1. Przejdź do katalogu frontend:
+
+```bash
+cd frontend
+```
+
+2. Zainstaluj zależności i uruchom aplikację deweloperską:
+
+```bash
+npm install
+cp .env.example .env   # jeśli istnieje plik .env.example
+git status --porcelain || true
+npm start
+```
+
+Frontend domyślnie działa na http://localhost:3000
+
+### Uruchomienie przez Docker (alternatywnie)
+
+Możesz uruchomić cały stos za pomocą docker-compose:
+
+```bash
+docker-compose up -d
+```
+
+Po uruchomieniu:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+
+## Skrypty ułatwiające start (Docker + przygotowanie)
+
+W repo znajduje się zestaw skryptów w katalogu `scripts/`, które automatyzują przygotowanie środowiska i uruchomienie kontenerów:
+
+- `scripts/setup_and_up.sh` — kompletny skrypt przygotowujący frontend i backend oraz uruchamiający Docker Compose.
+  - Co robi:
+    - Kopiuje `.env.example` -> `.env` (frontend i backend), jeśli brakuje pliku `.env`.
+    - Tworzy katalog `backend/database` i plik SQLite `database.sqlite` jeśli brakuje.
+    - Próbuje uruchomić `composer install` i `php artisan key:generate` lokalnie (jeśli dostępne). Jeśli `composer`/`npm` nie są zainstalowane lokalnie, po uruchomieniu Docker wykonuje instalację wewnątrz kontenerów.
+    - Ustawia w `frontend/.env` wartość `REACT_APP_API_URL=http://backend:8000/api` (optymalne przy uruchomieniu w docker-compose).
+    - Uruchamia `docker-compose` (wspiera zarówno `docker-compose`, jak i `docker compose`), buduje obrazy i czeka aż frontend i backend odpowiedzą.
+    - Uruchamia migracje (lokalnie lub wewnątrz kontenera), chyba że pominiesz je zmienną środowiskową.
+  - Przydatne zmienne środowiskowe:
+    - `SKIP_MIGRATE=1` — pominie uruchamianie migracji
+    - `SKIP_COMPOSER=1` — pominie lokalne `composer install`
+    - `SKIP_NPM=1` — pominie lokalne `npm ci`
+    - `SKIP_DOCKER=1` — przygotuje pliki, ale nie uruchomi Dockera (tryb suchy)
+    - `TIMEOUT` — czas oczekiwania na zdrowie serwisów (domyślnie 120s)
+  - Przykłady:
+
+```bash
+# Pełne uruchomienie (jeśli masz docker/docker-compose):
+./scripts/setup_and_up.sh
+
+# Suchy test (nie uruchamia docker, composer ani npm):
+SKIP_DOCKER=1 SKIP_COMPOSER=1 SKIP_NPM=1 SKIP_MIGRATE=1 ./scripts/setup_and_up.sh
+
+# Pominąć migracje przy uruchamianiu:
+SKIP_MIGRATE=1 ./scripts/setup_and_up.sh
+```
+
+- `scripts/up.sh` — prostszy wrapper, który uruchamia `docker-compose up -d --build` i czeka aż serwisy odpowiadają. Użyj, jeśli chcesz tylko szybko wystartować stack:
+
+```bash
+./scripts/up.sh
+```
+
+- `scripts/down.sh` — zatrzymuje kontenery i usuwa wolumeny/orphany:
+
+```bash
+./scripts/down.sh
+```
+
+Dodatkowe informacje i wskazówki
+- W `docker-compose.yml` wartość `REACT_APP_API_URL` jest ustawiona na `http://backend:8000/api` — to poprawna konfiguracja dla środowiska Docker Compose (frontend wewnątrz sieci compose odnosi się do backendu po nazwie usługi). Jeśli uruchamiasz frontend lokalnie (`npm start`), ustaw `REACT_APP_API_URL` na `http://localhost:8000/api` w lokalnym `frontend/.env`.
+- Jeśli healthchecky w `docker-compose.yml` nie przechodzą (np. backend nie wystawia root HTTP), rozważ dodanie prostego endpointu health w backendzie (np. `GET /api/health` zwracającego 200) i zaktualizowanie healthchecków.
+- Aby śledzić logi kontenerów:
+
+```bash
+# Śledź logi frontend i backend
+# Jeśli używasz "docker compose" zamiast "docker-compose" zamień komendę odpowiednio
+docker-compose -f docker-compose.yml logs -f frontend backend
+```
+
+## Punkt końcowy API (przykładowe)
+
+### Uwierzytelnianie
+- POST /api/v1/register — rejestracja nowego użytkownika
+- POST /api/v1/login — logowanie
+- POST /api/v1/logout — wylogowanie
+
+### Zdjęcia
+- GET /api/v1/photos — pobierz zdjęcia użytkownika
+- POST /api/v1/photos — dodaj/załaduj nowe zdjęcie
+- GET /api/v1/photos/{id} — pobierz konkretne zdjęcie
+- PUT /api/v1/photos/{id} — aktualizuj metadane zdjęcia
+- DELETE /api/v1/photos/{id} — usuń zdjęcie
+
+### Operacje edycji zdjęć
+- POST /api/v1/photos/{id}/resize — zmiana rozmiaru
+- POST /api/v1/photos/{id}/crop — przycięcie
+- POST /api/v1/photos/{id}/brightness — jasność
+- POST /api/v1/photos/{id}/contrast — kontrast
+- POST /api/v1/photos/{id}/filter — zastosuj filtr
+
+(Uwaga: szczegóły i payloady tych endpointów są zdefiniowane w kontrolerach backendu.)
+
+## Deweloperka
+
+### Frontend
+
+- `npm start` — uruchamia serwer deweloperski
+- `npm run build` — buduje wersję produkcyjną
+- `npm test` — uruchamia testy (jeśli skonfigurowane)
+
+### Backend
+
+- `php artisan serve` — uruchamia lokalny serwer Laravel
+- `php artisan migrate` — uruchamia migracje bazy danych
+- `php artisan test` — uruchamia testy PHPUnit
+
+## Wdrażanie
+
+### Build produkcyjny
+
+Frontend:
+
+```bash
 cd frontend
 npm run build
+```
 
-# Backend
+Backend (optymalizacja instalacji PHP):
+
+```bash
 cd backend
 composer install --optimize-autoloader --no-dev
 php artisan config:cache
@@ -159,23 +226,27 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-### Docker Production
+### Wdrażanie z Dockerem
+
 ```bash
 docker-compose --profile production up -d
 ```
 
-## Contributing
+## Wkład i kontrybucja
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork repozytorium
+2. Stwórz branch funkcjonalności: `git checkout -b feature/nazwa-funkcji`
+3. Wprowadź zmiany i zatwierdź: `git commit -m "Opis zmian"`
+4. Wypchnij branch i otwórz Pull Request
 
-## License
+## Licencja
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Projekt na licencji MIT — zobacz plik LICENSE w repozytorium.
 
-## Support
+## Pomoc i kontakt
 
-If you encounter any issues or have questions, please file an issue on the GitHub repository.
+Jeśli masz pytania lub problemy, otwórz issue w repozytorium projektu.
+
+---
+
+Plik README jest przetłumaczony i dostosowany tak, by odzwierciedlać strukturę i instrukcje zawarte w oryginalnym README projektu Lumina.
