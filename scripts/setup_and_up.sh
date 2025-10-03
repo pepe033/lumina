@@ -32,6 +32,16 @@ check_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# If SKIP_NPM=1 and Docker is available, install frontend deps inside container later
+if [ "${SKIP_NPM:-0}" = "1" ]; then
+  if check_cmd docker; then
+    echo "SKIP_NPM=1 detected — zależności frontendu zostaną zainstalowane wewnątrz kontenera frontend (po uruchomieniu)."
+    need_npm_in_container=1
+  else
+    echo "SKIP_NPM=1 — pomijam instalację zależności frontendu lokalnie i nie mogę uruchomić ich w kontenerze (brak Dockera)."
+  fi
+fi
+
 # detect docker-compose command (docker-compose or docker compose)
 get_docker_compose_cmd() {
   if check_cmd docker-compose; then
@@ -116,10 +126,11 @@ fi
 
 # Ustaw REACT_APP_API_URL na adres kontenera backend (backend:8000) — ważne przy uruchomieniu w docker-compose
 FRONTEND_ENV_FILE="$FRONTEND_DIR/.env"
-API_LINE="REACT_APP_API_URL=http://backend:8000/api"
+# Use API v1 prefix to match backend routes
+API_LINE="REACT_APP_API_URL=http://backend:8000/api/v1"
 if [ -f "$FRONTEND_ENV_FILE" ]; then
   if grep -q '^REACT_APP_API_URL=' "$FRONTEND_ENV_FILE"; then
-    echo "Aktualizuję REACT_APP_API_URL w frontend/.env -> http://backend:8000/api"
+    echo "Aktualizuję REACT_APP_API_URL w frontend/.env -> http://backend:8000/api/v1"
     awk -v val="$API_LINE" 'BEGIN{changed=0} /^REACT_APP_API_URL=/{print val; changed=1; next} {print} END{if(!changed) print val}' "$FRONTEND_ENV_FILE" > "$FRONTEND_ENV_FILE.tmp" && mv "$FRONTEND_ENV_FILE.tmp" "$FRONTEND_ENV_FILE"
   else
     echo "$API_LINE" >> "$FRONTEND_ENV_FILE"
@@ -179,6 +190,16 @@ if [ $need_npm_in_container -eq 1 ]; then
   eval "$DOCKER_COMPOSE_CMD run --rm frontend npm ci" || echo "npm w kontenerze nie powiódł się. Sprawdź logi obrazu frontend."
 fi
 
+# Ensure storage symlink exists and set proper permissions inside backend container
+if [ -n "${DOCKER_COMPOSE_CMD:-}" ]; then
+  echo "Sprawdzam i tworząc link storage (public/storage) oraz ustawiam prawa w kontenerze backend..."
+  # php artisan storage:link może zwrócić błąd jeśli link już istnieje; ignorujemy to
+  eval "$DOCKER_COMPOSE_CMD exec backend php artisan storage:link" || true
+  # Ustaw bezpieczne prawa do katalogów storage i bootstrap/cache
+  eval "$DOCKER_COMPOSE_CMD exec backend sh -c 'chown -R www-data:www-data storage bootstrap/cache || true'" || true
+  eval "$DOCKER_COMPOSE_CMD exec backend sh -c 'chmod -R 775 storage bootstrap/cache || true'" || true
+fi
+
 # Jeśli migracje nie wykonano lokalnie i nie pominięto, uruchom migracje w kontenerze
 if [ "${SKIP_MIGRATE:-0}" != "1" ] && [ $migrate_locally -eq 0 ]; then
   echo "Uruchamiam migracje wewnątrz kontenera backend..."
@@ -191,18 +212,64 @@ wait_for_url() {
   echo -n "Sprawdzam $name pod $url ... "
   start=$(date +%s)
   while true; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" || echo "000")
+    # give each curl try a bit more time (connect + response)
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo "000")
+    if [ "${DEBUG:-0}" -eq 1 ]; then
+      echo -n "[debug] curl -> $code ";
+    fi
     if [[ "$code" =~ ^[23] ]]; then
       echo "OK (HTTP $code)"
       return 0
     fi
+
+    # If curl didn't return success but we have docker compose, check container health as fallback
+    if [ -n "${DOCKER_COMPOSE_CMD:-}" ]; then
+      # get container id for service 'name' (returns empty if not running)
+      cid=$(eval "$DOCKER_COMPOSE_CMD -f \"$COMPOSE_FILE\" ps -q $name" 2>/dev/null || true)
+      if [ -n "$cid" ]; then
+        # check if container is running
+        running=$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo "false")
+        health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo "unknown")
+        if [ "$running" = "true" ] && [ "$health" = "healthy" ]; then
+          echo "OK (container $name is running and healthy)"
+          return 0
+        fi
+
+        # Try to curl the endpoint from inside the container (in case host-forwarding/networking differs)
+        # Only attempt if docker exec available
+        if docker exec "$cid" true >/dev/null 2>&1; then
+          internal_code=$(docker exec "$cid" sh -c 'curl -s -o /dev/null -w "%{http_code}" --max-time 5 "'"$url"'"' || echo "000")
+          if [ "${DEBUG:-0}" -eq 1 ]; then
+            echo -n "[debug] internal curl -> $internal_code ";
+          fi
+          if [[ "$internal_code" =~ ^[23] ]]; then
+            echo "OK (internal container curl $internal_code)"
+            return 0
+          fi
+        fi
+      fi
+    fi
+
     now=$(date +%s)
     if (( now - start >= timeout )); then
       echo
       echo "Timeout: $name nie odpowiedział w ciągu ${timeout}s (ostatni kod: $code)."
       echo "Sprawdzam status kontenerów..."
-      docker-compose -f "$COMPOSE_FILE" ps
-      echo "Sprawdź logi: docker-compose -f $COMPOSE_FILE logs --tail=100 $name"
+      # Use detected docker compose command for diagnostics (supports 'docker compose')
+      if [ -n "${DOCKER_COMPOSE_CMD:-}" ]; then
+        eval "$DOCKER_COMPOSE_CMD -f \"$COMPOSE_FILE\" ps"
+        echo "Sprawdź logi: $DOCKER_COMPOSE_CMD -f $COMPOSE_FILE logs --tail=100 $name"
+        # show container health state if available
+        cid=$(eval "$DOCKER_COMPOSE_CMD -f \"$COMPOSE_FILE\" ps -q $name" 2>/dev/null || true)
+        if [ -n "$cid" ]; then
+          echo "Container id: $cid"
+          echo "Running:" $(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo "?")
+          echo "Health:" $(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo "?")
+        fi
+      else
+        docker-compose -f "$COMPOSE_FILE" ps || true
+        echo "Sprawdź logi: docker-compose -f $COMPOSE_FILE logs --tail=100 $name"
+      fi
       return 1
     fi
     echo -n "."
@@ -211,7 +278,8 @@ wait_for_url() {
 }
 
 FRONTEND_URL="http://localhost:3000"
-BACKEND_URL="http://localhost:8000"
+# Check backend health endpoint specifically (more reliable than root)
+BACKEND_URL="http://localhost:8000/api/health"
 
 if ! wait_for_url "$BACKEND_URL" "backend" "$TIMEOUT"; then
   echo "Błąd: backend nie uruchomił się poprawnie. Sprawdź logi." >&2

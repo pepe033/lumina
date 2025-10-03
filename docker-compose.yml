@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Frontend React App
   frontend:
@@ -13,13 +11,15 @@ services:
       - /app/node_modules
     environment:
       - REACT_APP_API_URL=http://backend:8000/api
+      - HOST=0.0.0.0
+      - BROWSER=none
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "curl -sSf --connect-timeout 2 http://127.0.0.1:3000/ || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 20
 
   # Backend Laravel API
   backend:
@@ -30,16 +30,18 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/var/www/html
+      # Use a named volume for storage so container can manage ownership/permissions
+      - backend_storage:/var/www/html/storage
     environment:
       - APP_ENV=local
       - APP_DEBUG=true
       - DB_CONNECTION=sqlite
       - DB_DATABASE=/var/www/html/database/database.sqlite
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sSf --connect-timeout 2 http://127.0.0.1:8000/api/health || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 20
 
   # Nginx for production
   nginx:
@@ -54,3 +56,11 @@ services:
       - backend
     profiles:
       - production
+
+networks:
+  default:
+    name: lumina_default
+
+volumes:
+  backend_storage:
+    driver: local

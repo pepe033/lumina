@@ -8,11 +8,78 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const fetchedRef = useRef(false);
 
+  // Map photo id -> object URL (state for render, ref for up-to-date cleanup)
+  const [photoSrcMap, setPhotoSrcMap] = useState<Record<number, string>>({});
+  const photoSrcRef = useRef<Record<number, string>>({});
+
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
     loadPhotos();
+    // cleanup on unmount
+    return () => {
+      // revoke all object URLs (copy current values to avoid stale-ref lint warning)
+      const urls = Object.values(photoSrcRef.current);
+      urls.forEach((url) => {
+        try {
+          // only revoke if it was created via URL.createObjectURL (skip data URIs)
+          if (url && url.startsWith && !url.startsWith('data:')) {
+            URL.revokeObjectURL(url);
+          }
+        } catch (e) {
+          // ignore errors during cleanup
+        }
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // When photos list changes, ensure we have blobs for each
+    photos.forEach((photo) => {
+      if (photoSrcMap[photo.id]) return; // already fetched
+      // If the photo model already provides a data URI, use it directly
+      if (photo.url && photo.url.startsWith && photo.url.startsWith('data:')) {
+        // store data URI directly (no need to revoke later)
+        photoSrcRef.current[photo.id] = photo.url;
+        setPhotoSrcMap((prev) => ({ ...prev, [photo.id]: photo.url }));
+        return;
+      }
+      fetchPhotoBlob(photo.id);
+    });
+    // cleanup removed photos' object URLs
+    const currentIds = new Set(photos.map((p) => p.id));
+    const toRevoke = Object.keys(photoSrcRef.current).map(Number).filter((id) => !currentIds.has(id));
+    if (toRevoke.length > 0) {
+      setPhotoSrcMap((prev) => {
+        const next = { ...prev };
+        toRevoke.forEach((id) => {
+          const url = photoSrcRef.current[id];
+          if (url) {
+            URL.revokeObjectURL(url);
+            delete photoSrcRef.current[id];
+          }
+          if (next[id]) delete next[id];
+        });
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos]);
+
+  const fetchPhotoBlob = async (id: number) => {
+    try {
+      // Use axios wrapper which includes baseURL and Authorization header
+      const response = await photoAPI.getPhotoRaw(id);
+      const blob = response.data as Blob;
+      const objectUrl = URL.createObjectURL(blob);
+      // update ref and state (state triggers render)
+      photoSrcRef.current[id] = objectUrl;
+      setPhotoSrcMap((prev) => ({ ...prev, [id]: objectUrl }));
+    } catch (err) {
+      console.error('Error fetching photo blob via axios', id, err);
+    }
+  };
 
   const loadPhotos = async (): Promise<void> => {
     try {
@@ -37,6 +104,8 @@ const DashboardPage: React.FC = () => {
 
   const handleUploadSuccess = (newPhoto: Photo): void => {
     setPhotos((prev) => [newPhoto, ...prev]);
+    // fetch its blob
+    fetchPhotoBlob(newPhoto.id);
   };
 
   return (
@@ -66,7 +135,7 @@ const DashboardPage: React.FC = () => {
             <div key={photo.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
               <div className="aspect-w-1 aspect-h-1">
                 <img
-                  src={photo.url}
+                  src={photoSrcMap[photo.id] ?? photo.url}
                   alt={photo.title}
                   className="w-full h-48 object-cover"
                 />

@@ -32,6 +32,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/photos', [PhotoController::class, 'index']);
         Route::post('/photos', [PhotoController::class, 'store']);
         Route::get('/photos/{photo}', [PhotoController::class, 'show']);
+        Route::get('/photos/{photo}/raw', [PhotoController::class, 'raw']);
         Route::put('/photos/{photo}', [PhotoController::class, 'update']);
         Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
 

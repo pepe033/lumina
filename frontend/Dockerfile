@@ -8,6 +8,9 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# Ensure curl is present so healthchecks using curl succeed
+RUN apk add --no-cache curl
+
 # Copy source code
 COPY . .
 

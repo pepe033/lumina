@@ -20,6 +20,7 @@ class Photo extends Model
         'mime_type',
         'width',
         'height',
+        'data',
     ];
 
     protected $casts = [
@@ -27,6 +28,9 @@ class Photo extends Model
         'width' => 'integer',
         'height' => 'integer',
     ];
+
+    // Hide the binary data from default JSON serialization
+    protected $hidden = ['data'];
 
     // Ensure 'url' accessor is included when model is serialized to array/json
     protected $appends = ['url'];
@@ -44,6 +48,20 @@ class Photo extends Model
      */
     public function getUrlAttribute(): string
     {
+        // If binary data is present, return a data URI so the frontend can display the image
+        if (!empty($this->data)) {
+            $mime = $this->mime_type ?: 'application/octet-stream';
+            // Ensure we have binary string to base64-encode
+            $binary = $this->data;
+            if (is_resource($binary)) {
+                // If stored as a stream resource, read it
+                rewind($binary);
+                $binary = stream_get_contents($binary);
+            }
+            $base64 = base64_encode($binary);
+            return "data:{$mime};base64,{$base64}";
+        }
+
         // Use the public disk to generate a URL. Falls back to asset helper.
         try {
             return Storage::disk('public')->url($this->path);

@@ -1,252 +1,145 @@
-# Lumina Photo Editor
+# Lumina — Photo Editor (instrukcja po polsku)
 
-Lumina to nowoczesna aplikacja webowa do edycji zdjęć, zbudowana z użyciem frontendowego Reacta (TypeScript) oraz backendu w Laravelu. Umożliwia użytkownikom przesyłanie, edytowanie i zarządzanie zdjęciami online przy użyciu narzędzi takich jak regulacja jasności, kontrastu, nasycenia oraz zestawu filtrów.
+Lumina to prosty edytor zdjęć: frontend w React (TypeScript) + backend API w Laravel. W tym repo znajdziesz skrypty ułatwiające przygotowanie i uruchomienie całego stosu (frontend + backend) za pomocą Dockera.
 
-## Funkcje
+Krótko — najważniejsze zmiany i zachowanie projektu:
+- Zdjęcia są przechowywane w bazie danych w kolumnie `data` jako BLOB (binary). Dzięki temu pliki mogą być usuwane z dysku po poprawnym zapisaniu w DB.
+- Po zaimportowaniu lub zsynchronizowaniu zdjęcia oryginalne pliki na dysku (storage/public/photos/...) są usuwane — zarówno podczas masowego importu (`photos:import-from-storage`), synchronizacji (`photos:sync-to-db`) jak i uploadu przez API.
+- Frontend został zmodyfikowany, aby wyświetlać obrazy bezpośrednio z pola `url` zwracanego przez API; jeśli `url` to data-URI (base64), nie trzeba pobierać dodatkowego bloba.
 
-- **Uwierzytelnianie użytkowników**: rejestracja i logowanie
-- **Przesyłanie zdjęć**: upload plików (wielu formatów)
-- **Edytor zdjęć**: regulacja jasności, kontrastu, nasycenia itp.
-- **Filtry**: zastosowanie predefiniowanych efektów
-- **Zarządzanie zdjęciami**: wyświetlanie, organizowanie i usuwanie zdjęć
-- **Responsywny interfejs**: działa na desktopie i urządzeniach mobilnych
+Spis treści
+- Wymagania
+- Szybkie uruchomienie (Docker)
+- Uruchamianie lokalne
+- Przydatne skrypty
+- Czyszczenie bazy i import zdjęć
+- Testy i debug
 
-## Stos technologiczny
+## Wymagania
+- Docker (zalecane: Docker Desktop)
+- docker-compose lub `docker compose`
+- (opcjonalnie lokalnie) Node.js, npm, PHP, Composer — skrypty radzą sobie kiedy brak tych narzędzi lokalnie i wykonają instalacje wewnątrz kontenerów.
 
-### Frontend
-- React 18 z TypeScript
-- Tailwind CSS do stylowania
-- React Router do nawigacji
-- Axios do komunikacji z API
-- Headless UI i Heroicons (opcjonalnie)
+## Szybkie uruchomienie (Docker, rekomendowane)
+1. Nadaj prawa uruchomienia skryptom i uruchom:
 
-### Backend
-- Laravel 11 (API)
-- Laravel Sanctum do uwierzytelniania API
-- SQLite domyślnie (łatwe przełączenie na inną bazę danych)
-- Architektura RESTful API
-
-## Struktura projektu
-
-```
-lumina/
-├── backend/                 # Laravel Backend API
-│   ├── app/
-│   │   ├── Http/
-│   │   │   └── Controllers/ # Kontrolery API
-│   │   ├── Models/          # Modele Eloquent
-│   │   └── Services/        # Logika biznesowa (jeśli istnieje)
-│   ├── config/              # Pliki konfiguracyjne
-│   ├── database/            # Migracje, seedy, sqlite
-│   ├── routes/              # Trasy API i web
-│   └── storage/             # Przechowywanie plików
-├── frontend/                # Frontend React
-│   ├── src/
-│   │   ├── components/      # Komponenty React
-│   │   ├── pages/           # Strony
-│   │   ├── services/        # Warstwa komunikacji z API
-│   │   └── types/           # Definicje TypeScript
-│   └── public/              # Zasoby statyczne
-├── docker/                  # Konfiguracje Docker / nginx
-├── README.md                # Ten plik
-└── docker-compose.yml      # Konfiguracja docker-compose
+```bash
+chmod +x scripts/*.sh
+./scripts/start_full.sh
 ```
 
-> Uwaga: pełna struktura znajduje się w repozytorium (foldery `backend`, `frontend` i inne).
+Skrypt `start_full.sh` jest prostym wrapperem wywołującym `scripts/setup_and_up.sh` (przygotowuje pliki, instaluje zależności lokalnie jeśli dostępne, ustawia `REACT_APP_API_URL` w `frontend/.env`, uruchamia `docker-compose` i czeka aż serwisy odpowiadają).
 
-## Szybki start
+Kilka przydatnych zmiennych środowiskowych (opcjonalne):
+- SKIP_COMPOSER=1 — pominie lokalne `composer install` (zrób to jeśli chcesz, żeby instalacja odbyła się w kontenerze)
+- SKIP_NPM=1 — pominie lokalne `npm ci`
+- SKIP_MIGRATE=1 — pominie uruchomienie migracji
+- SKIP_DOCKER=1 — przygotuje pliki, ale nie uruchomi Dockera
 
-### Wymagania
-- Node.js 18+ (frontend)
-- PHP 8.2+ (backend)
-- Composer
-- Docker (opcjonalnie)
+Przykłady:
 
-### Uruchomienie lokalne — backend
+```bash
+# pełne uruchomienie (domyślnie użyje lokalnego composer/npm jeśli dostępne)
+./scripts/start_full.sh
 
-1. Przejdź do katalogu backend:
+# jeśli chcesz, żeby composer/npm były wykonane wewnątrz kontenera zamiast lokalnie:
+SKIP_COMPOSER=1 SKIP_NPM=1 ./scripts/start_full.sh
+```
+
+Po udanym starcie:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+
+## Uruchamianie lokalne (bez Dockera)
+Backend (Laravel):
 
 ```bash
 cd backend
-```
-
-2. Zainstaluj zależności PHP i przygotuj środowisko:
-
-```bash
 composer install
 cp .env.example .env
 php artisan key:generate
 touch database/database.sqlite
 php artisan migrate
-php artisan serve
+php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-Domyślnie backend będzie dostępny na http://127.0.0.1:8000
-
-### Uruchomienie lokalne — frontend
-
-1. Przejdź do katalogu frontend:
+Frontend (React):
 
 ```bash
 cd frontend
-```
-
-2. Zainstaluj zależności i uruchom aplikację deweloperską:
-
-```bash
-npm install
-cp .env.example .env   # jeśli istnieje plik .env.example
-git status --porcelain || true
+npm ci
+cp .env.example .env   # jeśli istnieje
+# Ustaw w frontend/.env REACT_APP_API_URL na http://localhost:8000/api jeśli uruchamiasz backend lokalnie
 npm start
 ```
 
-Frontend domyślnie działa na http://localhost:3000
+## Przydatne skrypty (w katalogu `scripts/`)
+- `scripts/start_full.sh` — convenience wrapper, wywołuje `setup_and_up.sh`
+- `scripts/setup_and_up.sh` — główny skrypt przygotowujący środowisko (kopiuje .env, tworzy plik sqlite, instaluje zależności lokalnie lub w kontenerze, ustawia env frontend, uruchamia docker-compose i migracje)
+- `scripts/up.sh` — prosty wrapper uruchamiający `docker-compose up -d --build` i czeka na dostępność serwisów
+- `scripts/down.sh` — zatrzymuje stack (usuwa kontenery)
+- `scripts/reset_db_and_migrate.sh` — tworzy kopię zapasową sqlite (jeśli istnieje), resetuje plik sqlite i uruchamia migracje (lokalnie lub w kontenerze)
 
-### Uruchomienie przez Docker (alternatywnie)
-
-Możesz uruchomić cały stos za pomocą docker-compose:
+## Czyszczenie bazy i import zdjęć
+- Wyczyszczenie bazy (sqlite) i migracje:
 
 ```bash
-docker-compose up -d
+# lokalnie
+./scripts/reset_db_and_migrate.sh
+
+# lub uruchomić wewnątrz kontenera po starcie
+docker-compose exec backend php artisan migrate:fresh --seed
 ```
 
-Po uruchomieniu:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-
-## Skrypty ułatwiające start (Docker + przygotowanie)
-
-W repo znajduje się zestaw skryptów w katalogu `scripts/`, które automatyzują przygotowanie środowiska i uruchomienie kontenerów:
-
-- `scripts/setup_and_up.sh` — kompletny skrypt przygotowujący frontend i backend oraz uruchamiający Docker Compose.
-  - Co robi:
-    - Kopiuje `.env.example` -> `.env` (frontend i backend), jeśli brakuje pliku `.env`.
-    - Tworzy katalog `backend/database` i plik SQLite `database.sqlite` jeśli brakuje.
-    - Próbuje uruchomić `composer install` i `php artisan key:generate` lokalnie (jeśli dostępne). Jeśli `composer`/`npm` nie są zainstalowane lokalnie, po uruchomieniu Docker wykonuje instalację wewnątrz kontenerów.
-    - Ustawia w `frontend/.env` wartość `REACT_APP_API_URL=http://backend:8000/api` (optymalne przy uruchomieniu w docker-compose).
-    - Uruchamia `docker-compose` (wspiera zarówno `docker-compose`, jak i `docker compose`), buduje obrazy i czeka aż frontend i backend odpowiedzą.
-    - Uruchamia migracje (lokalnie lub wewnątrz kontenera), chyba że pominiesz je zmienną środowiskową.
-  - Przydatne zmienne środowiskowe:
-    - `SKIP_MIGRATE=1` — pominie uruchamianie migracji
-    - `SKIP_COMPOSER=1` — pominie lokalne `composer install`
-    - `SKIP_NPM=1` — pominie lokalne `npm ci`
-    - `SKIP_DOCKER=1` — przygotuje pliki, ale nie uruchomi Dockera (tryb suchy)
-    - `TIMEOUT` — czas oczekiwania na zdrowie serwisów (domyślnie 120s)
-  - Przykłady:
+- Import zdjęć (jeśli masz zdjęcia w `backend/storage/app/public/photos`):
 
 ```bash
-# Pełne uruchomienie (jeśli masz docker/docker-compose):
-./scripts/setup_and_up.sh
-
-# Suchy test (nie uruchamia docker, composer ani npm):
-SKIP_DOCKER=1 SKIP_COMPOSER=1 SKIP_NPM=1 SKIP_MIGRATE=1 ./scripts/setup_and_up.sh
-
-# Pominąć migracje przy uruchamianiu:
-SKIP_MIGRATE=1 ./scripts/setup_and_up.sh
-```
-
-- `scripts/up.sh` — prostszy wrapper, który uruchamia `docker-compose up -d --build` i czeka aż serwisy odpowiadają. Użyj, jeśli chcesz tylko szybko wystartować stack:
-
-```bash
-./scripts/up.sh
-```
-
-- `scripts/down.sh` — zatrzymuje kontenery i usuwa wolumeny/orphany:
-
-```bash
-./scripts/down.sh
-```
-
-Dodatkowe informacje i wskazówki
-- W `docker-compose.yml` wartość `REACT_APP_API_URL` jest ustawiona na `http://backend:8000/api` — to poprawna konfiguracja dla środowiska Docker Compose (frontend wewnątrz sieci compose odnosi się do backendu po nazwie usługi). Jeśli uruchamiasz frontend lokalnie (`npm start`), ustaw `REACT_APP_API_URL` na `http://localhost:8000/api` w lokalnym `frontend/.env`.
-- Jeśli healthchecky w `docker-compose.yml` nie przechodzą (np. backend nie wystawia root HTTP), rozważ dodanie prostego endpointu health w backendzie (np. `GET /api/health` zwracającego 200) i zaktualizowanie healthchecków.
-- Aby śledzić logi kontenerów:
-
-```bash
-# Śledź logi frontend i backend
-# Jeśli używasz "docker compose" zamiast "docker-compose" zamień komendę odpowiednio
-docker-compose -f docker-compose.yml logs -f frontend backend
-```
-
-## Punkt końcowy API (przykładowe)
-
-### Uwierzytelnianie
-- POST /api/v1/register — rejestracja nowego użytkownika
-- POST /api/v1/login — logowanie
-- POST /api/v1/logout — wylogowanie
-
-### Zdjęcia
-- GET /api/v1/photos — pobierz zdjęcia użytkownika
-- POST /api/v1/photos — dodaj/załaduj nowe zdjęcie
-- GET /api/v1/photos/{id} — pobierz konkretne zdjęcie
-- PUT /api/v1/photos/{id} — aktualizuj metadane zdjęcia
-- DELETE /api/v1/photos/{id} — usuń zdjęcie
-
-### Operacje edycji zdjęć
-- POST /api/v1/photos/{id}/resize — zmiana rozmiaru
-- POST /api/v1/photos/{id}/crop — przycięcie
-- POST /api/v1/photos/{id}/brightness — jasność
-- POST /api/v1/photos/{id}/contrast — kontrast
-- POST /api/v1/photos/{id}/filter — zastosuj filtr
-
-(Uwaga: szczegóły i payloady tych endpointów są zdefiniowane w kontrolerach backendu.)
-
-## Deweloperka
-
-### Frontend
-
-- `npm start` — uruchamia serwer deweloperski
-- `npm run build` — buduje wersję produkcyjną
-- `npm test` — uruchamia testy (jeśli skonfigurowane)
-
-### Backend
-
-- `php artisan serve` — uruchamia lokalny serwer Laravel
-- `php artisan migrate` — uruchamia migracje bazy danych
-- `php artisan test` — uruchamia testy PHPUnit
-
-## Wdrażanie
-
-### Build produkcyjny
-
-Frontend:
-
-```bash
-cd frontend
-npm run build
-```
-
-Backend (optymalizacja instalacji PHP):
-
-```bash
+# Importuje pliki z storage/app/public/{dir} do tabeli photos (kolumna data jako BLOB)
+# Po udanym imporcie pliki zostaną usunięte z dysku
 cd backend
-composer install --optimize-autoloader --no-dev
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan photos:import-from-storage --user=1 --dir=photos
+
+# Alternatywnie, jeśli chcesz jedynie zsynchronizować brakujące bloby:
+php artisan photos:sync-to-db
 ```
 
-### Wdrażanie z Dockerem
+## Testowanie wyświetlania zdjęć
+- Frontend używa teraz pola `url` zwracanego przez API. Jeśli `url` to data-URI (zawartość BLOB base64), obraz zostanie wyświetlony bez odwołań do plików na dysku.
+- Możesz też pobrać surowy obraz przez endpoint (jeśli zapisano blob lub plik istnieje):
 
-```bash
-docker-compose --profile production up -d
-```
+  GET /api/v1/photos/{id}/raw  -> zwraca treść obrazu (Content-Type ustawiony)
 
-## Wkład i kontrybucja
+## Debug i najczęstsze błędy
+- Błąd: "Cannot connect to the Docker daemon at unix:///... Is the docker daemon running?"
+  - Upewnij się, że Docker Desktop jest uruchomiony i że Twój użytkownik ma dostęp do socketu docker (na macOS zwykle Docker Desktop naprawia uprawnienia automatycznie).
+  - Uruchom `docker ps` aby sprawdzić, czy demon działa.
 
-1. Fork repozytorium
-2. Stwórz branch funkcjonalności: `git checkout -b feature/nazwa-funkcji`
-3. Wprowadź zmiany i zatwierdź: `git commit -m "Opis zmian"`
-4. Wypchnij branch i otwórz Pull Request
+- Podczas budowy obrazu backend w Dockerfile może pojawić się błąd: `Could not open input file: artisan` — oznacza to, że w trakcie budowy obrazu ścieżka robocza nie zawiera pliku `artisan` (często spowodowane złym kontekstem build lub wolumenem nadpisującym pliki). Rozwiązania:
+  - Upewnij się, że `docker-compose.yml` używa poprawnego `context: ./backend` i Dockerfile w `backend/Dockerfile` jest poprawnie skonfigurowany.
+  - Jeżeli budujesz obraz, a potem montujesz wolumen `./backend:/var/www/html`, lokalna zawartość może nadpisać to, co skopiowałeś do obrazu; w takim wypadku instalacja zależności powinna być wykonywana po montowaniu lub korzystaj z `docker-compose run --rm backend composer install`.
 
-## Licencja
+## Co zrobiłem w kodzie (zmiany ważne dla projektu)
+- Backend (Laravel):
+  - Komenda `photos:import-from-storage` teraz po pomyślnym zapisaniu obrazu jako BLOB usuwa źródłowy plik z dysku.
+  - Komenda `photos:sync-to-db` podczas synchronizacji również usuwa plik z dysku po zapisaniu BLOB.
+  - `PhotoController::store` (upload) zapisuje BLOB do kolumny `data` i po udanym zapisie próbuje usunąć kopię pliku na dysku.
+  - Model `Photo` dodał accessor `url` który zwraca `data:<mime>;base64,<base64>` kiedy `data` istnieje — frontend może korzystać z tego pola bez dodatkowych zapytań.
 
-Projekt na licencji MIT — zobacz plik LICENSE w repozytorium.
+- Frontend (React):
+  - `DashboardPage` został zmieniony tak, aby używać `photo.url` jeżeli jest to data-URI; wtedy nie tworzy obiektów URL i nie potrzebuje pobierać bloba.
+  - Poprawiłem drobne ostrzeżenia ESLint wynikające z wcześniej dodanego kodu.
 
-## Pomoc i kontakt
+## Mapa wymagań -> status
+- README w języku polskim: Done (zaktualizowany)
+- Skrypt uruchamiający oba serwery w Docker i przygotowujący frontend/backend: Done (`scripts/start_full.sh` + `scripts/setup_and_up.sh`)
+- Weryfikacja i instalacja zależności, migracje: Done (skrypt `setup_and_up.sh` zarządza tymi krokami i potrafi uruchamiać komendy w kontenerach jeśli lokalne narzędzia nie są dostępne)
+- Zapisywanie zdjęć do DB jako BLOB + usuwanie plików po imporcie: Done (komendy `photos:import-from-storage`, `photos:sync-to-db`, oraz `PhotoController::store`)
+- Frontend wyświetlający obrazy z BLOB: Done (korekta `DashboardPage` oraz accessor `Photo::getUrlAttribute`)
 
-Jeśli masz pytania lub problemy, otwórz issue w repozytorium projektu.
+## Uwagi końcowe i dalsze kroki
+- Jeżeli chcesz, mogę:
+  - dodać endpoint health (`GET /api/v1/health`) jeśli healthchecky Docker wymagają go,
+  - dodać mały skrypt migracji w kontenerze który automatycznie uruchamia `composer install` i `php artisan migrate` podczas pierwszego startu, lub
+  - przenieść przechowywanie BLOB do dedykowanej tabeli (jeśli planujesz dużo dużych plików — SQLite może nie być najlepszym wyborem na produkcji).
 
----
-
-Plik README jest przetłumaczony i dostosowany tak, by odzwierciedlać strukturę i instrukcje zawarte w oryginalnym README projektu Lumina.
+Jeśli chcesz, uruchomię teraz ponowną kompilację frontendu, a także sprawdzę pliki PHP pod kątem błędów. Napisz "tak" jeśli mam kontynuować testy (build + sprawdzenie błędów).

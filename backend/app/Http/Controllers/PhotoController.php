@@ -60,7 +60,7 @@ class PhotoController extends Controller
                     'title' => 'nullable|string|max:255',
                 ]);
             } catch (ValidationException $e) {
-                // Log validation errors for debugging
+                // Log validation errors for debugging (concise)
                 \Log::warning('Photo upload validation failed', [
                     'errors' => $e->errors(),
                     'request_keys' => array_keys($request->all()),
@@ -75,7 +75,7 @@ class PhotoController extends Controller
 
             $photoFile = $request->file('photo');
 
-            // Additional debug logging about file
+            // Additional debug logging about file (concise)
             if ($photoFile) {
                 \Log::info('Photo file details', [
                     'original_name' => $photoFile->getClientOriginalName(),
@@ -89,6 +89,17 @@ class PhotoController extends Controller
             }
 
             $filename = time() . '_' . $photoFile->getClientOriginalName();
+
+            // Read raw binary data to store in DB
+            $data = null;
+            if ($photoFile && $photoFile->isValid()) {
+                $realPath = $photoFile->getRealPath();
+                if ($realPath && file_exists($realPath)) {
+                    $data = file_get_contents($realPath);
+                }
+            }
+
+            // Store a copy on disk as backup/for compatibility
             $path = $photoFile->storeAs('photos', $filename, 'public');
 
             $photo = Photo::create([
@@ -98,7 +109,24 @@ class PhotoController extends Controller
                 'path' => $path,
                 'size' => $photoFile->getSize(),
                 'mime_type' => $photoFile->getMimeType(),
+                'data' => $data,
             ]);
+
+            // Try to remove the stored file from disk after saving blob to DB
+            try {
+                if ($path && Storage::disk('public')->exists($path)) {
+                    $deleted = Storage::disk('public')->delete($path);
+                    if ($deleted) {
+                        \Log::info("Removed stored file after DB save: {$path}", ['photo_id' => $photo->id]);
+                    } else {
+                        \Log::warning("Failed to remove stored file after DB save (delete returned false): {$path}", ['photo_id' => $photo->id]);
+                    }
+                } else {
+                    \Log::info("Stored file not present when attempting cleanup: {$path}", ['photo_id' => $photo->id]);
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Error removing stored file after save', ['path' => $path, 'error' => $e->getMessage(), 'photo_id' => $photo->id]);
+            }
 
             // Refresh the model to get the URL attribute
             $photo->refresh();
@@ -129,6 +157,34 @@ class PhotoController extends Controller
         }
 
         return response()->json($photo);
+    }
+
+    /**
+     * Return raw binary image data
+     */
+    public function raw(Request $request, Photo $photo)
+    {
+        // Ensure user owns the photo
+        if ($photo->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Serve from DB blob if available
+        if (!empty($photo->data)) {
+            return response($photo->data, 200)
+                ->header('Content-Type', $photo->mime_type)
+                ->header('Content-Length', strlen($photo->data));
+        }
+
+        // Fallback to storage disk if blob missing
+        if (Storage::disk('public')->exists($photo->path)) {
+            $fileContents = Storage::disk('public')->get($photo->path);
+            return response($fileContents, 200)
+                ->header('Content-Type', $photo->mime_type)
+                ->header('Content-Length', strlen($fileContents));
+        }
+
+        return response()->json(['message' => 'Not Found'], 404);
     }
 
     /**
