@@ -303,4 +303,3 @@ Aby zatrzymać stack:
 EOF
 
 exit 0
-
