@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 interface LayoutProps {
@@ -9,6 +9,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -18,6 +19,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       console.error('Logout error:', error);
     }
   };
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -39,9 +42,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="hidden sm:flex sm:space-x-2">
                 <Link
                   to="/dashboard"
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive('/dashboard')
+                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  to="/upload"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive('/upload')
+                      ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Upload
+                </Link>
+                <Link
+                  to="/library"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive('/library')
+                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Biblioteka
                 </Link>
               </div>
             </div>
