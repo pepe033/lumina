@@ -95,6 +95,14 @@ if [ ! -f "$SQLITE_FILE" ]; then
   chmod 664 "$SQLITE_FILE" || true
 fi
 
+# Ensure bootstrap/cache exists and is writable to avoid composer post-autoload-dump errors
+if [ ! -d "$BACKEND_DIR/bootstrap/cache" ]; then
+  echo "Tworzę katalog $BACKEND_DIR/bootstrap/cache"
+  mkdir -p "$BACKEND_DIR/bootstrap/cache"
+fi
+# Give writable permissions so composer/artisan can write cached files
+chmod -R 0777 "$BACKEND_DIR/bootstrap/cache" || true
+
 # Composer install (jeśli composer jest dostępny i nie pomijamy)
 if [ "$SKIP_COMPOSER" != "1" ]; then
   if check_cmd composer; then
