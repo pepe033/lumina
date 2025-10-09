@@ -42,32 +42,40 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your Lumina account
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full">
+        {/* Logo and Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-6 shadow-2xl shadow-purple-500/50">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+          </div>
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">
+            Dołącz do Lumina
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              sign in to your existing account
-            </Link>
+          <p className="text-slate-400">
+            Utwórz nowe konto i zacznij zarządzać zdjęciami
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          <div className="space-y-4">
+
+        {/* Register Form Card */}
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-8">
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-red-400 text-sm font-medium">{error}</p>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
+              <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
+                Imię i nazwisko
               </label>
               <input
                 id="name"
@@ -75,15 +83,16 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 autoComplete="name"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Enter your full name"
+                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                placeholder="Jan Kowalski"
                 value={formData.name}
                 onChange={handleChange}
               />
             </div>
+
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
+              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                Adres email
               </label>
               <input
                 id="email"
@@ -91,15 +100,16 @@ const RegisterPage: React.FC = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Enter your email"
+                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                placeholder="twoj@email.com"
                 value={formData.email}
                 onChange={handleChange}
               />
             </div>
+
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+                Hasło
               </label>
               <input
                 id="password"
@@ -107,15 +117,16 @@ const RegisterPage: React.FC = () => {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Enter your password"
+                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
               />
             </div>
+
             <div>
-              <label htmlFor="password_confirmation" className="block text-sm font-medium text-gray-700">
-                Confirm Password
+              <label htmlFor="password_confirmation" className="block text-sm font-medium text-slate-300 mb-2">
+                Potwierdź hasło
               </label>
               <input
                 id="password_confirmation"
@@ -123,27 +134,62 @@ const RegisterPage: React.FC = () => {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Confirm your password"
+                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                placeholder="••••••••"
                 value={formData.password_confirmation}
                 onChange={handleChange}
               />
             </div>
-          </div>
 
-          <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              className={`
+                w-full py-4 px-6 rounded-xl font-semibold text-lg
+                transition-all duration-300 transform
+                flex items-center justify-center gap-3
+                ${loading
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50'
+                }
+                text-white shadow-md
+              `}
             >
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Tworzenie konta...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Utwórz konto
+                </>
+              )}
             </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-400">
+              Masz już konto?{' '}
+              <Link
+                to="/login"
+                className="font-semibold text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                Zaloguj się
+              </Link>
+            </p>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
 
 export default RegisterPage;
+

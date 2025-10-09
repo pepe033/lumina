@@ -1,99 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import PhotoUpload from '../components/PhotoUpload';
+import { useNavigate } from 'react-router-dom';
 import { photoAPI } from '../services/api';
 import { Photo } from '../types';
 
 const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const fetchedRef = useRef(false);
-
-  // Map photo id -> object URL (state for render, ref for up-to-date cleanup)
-  const [photoSrcMap, setPhotoSrcMap] = useState<Record<number, string>>({});
-  const photoSrcRef = useRef<Record<number, string>>({});
 
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
     loadPhotos();
-    // cleanup on unmount
-    return () => {
-      // revoke all object URLs (copy current values to avoid stale-ref lint warning)
-      const urls = Object.values(photoSrcRef.current);
-      urls.forEach((url) => {
-        try {
-          // only revoke if it was created via URL.createObjectURL (skip data URIs)
-          if (url && url.startsWith && !url.startsWith('data:')) {
-            URL.revokeObjectURL(url);
-          }
-        } catch (e) {
-          // ignore errors during cleanup
-        }
-      });
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    // When photos list changes, ensure we have blobs for each
-    photos.forEach((photo) => {
-      if (photoSrcMap[photo.id]) return; // already fetched
-      // If the photo model already provides a data URI, use it directly
-      if (photo.url && photo.url.startsWith && photo.url.startsWith('data:')) {
-        // store data URI directly (no need to revoke later)
-        photoSrcRef.current[photo.id] = photo.url;
-        setPhotoSrcMap((prev) => ({ ...prev, [photo.id]: photo.url }));
-        return;
-      }
-      fetchPhotoBlob(photo.id);
-    });
-    // cleanup removed photos' object URLs
-    const currentIds = new Set(photos.map((p) => p.id));
-    const toRevoke = Object.keys(photoSrcRef.current).map(Number).filter((id) => !currentIds.has(id));
-    if (toRevoke.length > 0) {
-      setPhotoSrcMap((prev) => {
-        const next = { ...prev };
-        toRevoke.forEach((id) => {
-          const url = photoSrcRef.current[id];
-          if (url) {
-            URL.revokeObjectURL(url);
-            delete photoSrcRef.current[id];
-          }
-          if (next[id]) delete next[id];
-        });
-        return next;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos]);
-
-  const fetchPhotoBlob = async (id: number) => {
-    try {
-      // Use axios wrapper which includes baseURL and Authorization header
-      const response = await photoAPI.getPhotoRaw(id);
-      const blob = response.data as Blob;
-      const objectUrl = URL.createObjectURL(blob);
-      // update ref and state (state triggers render)
-      photoSrcRef.current[id] = objectUrl;
-      setPhotoSrcMap((prev) => ({ ...prev, [id]: objectUrl }));
-    } catch (err) {
-      console.error('Error fetching photo blob via axios', id, err);
-    }
-  };
 
   const loadPhotos = async (): Promise<void> => {
     try {
       const response = await photoAPI.getPhotos();
-      // Filter out converted/thumbnail files (they have filename that contains 'converted_')
       const allPhotos: Photo[] = response.data;
       const filtered = allPhotos.filter((p) => !p.filename.includes('converted_'));
-
-      // Optional debug log in development
-      if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
-        console.debug('Loaded photos:', { all: allPhotos.length, filtered: filtered.length });
-      }
-
       setPhotos(filtered);
     } catch (error) {
       console.error('Error loading photos:', error);
@@ -102,62 +29,139 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleUploadSuccess = (newPhoto: Photo): void => {
-    setPhotos((prev) => [newPhoto, ...prev]);
-    // fetch its blob
-    fetchPhotoBlob(newPhoto.id);
-  };
+  const totalSize = photos.reduce((acc, p) => acc + (p.size || 0), 0) / 1024 / 1024;
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-gray-200 pb-5">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">
-          Moje Zdjęcia
-        </h3>
-        <p className="mt-2 max-w-4xl text-sm text-gray-500">
-          Przesyłaj i zarządzaj swoimi zdjęciami. Kliknij na dowolne zdjęcie aby rozpocząć edycję.
-        </p>
-      </div>
-
-      {/* Upload Section */}
-      <div className="bg-white border-2 border-gray-300 border-dashed rounded-lg p-6">
-        <PhotoUpload onUploadSuccess={handleUploadSuccess} />
-      </div>
-
-      {/* Photos Grid */}
-      {loading ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">Ładowanie zdjęć...</p>
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50 shadow-2xl">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-3xl font-bold text-white">
+              Witaj w Lumina
+            </h3>
+            <p className="text-slate-400 text-base mt-1">
+              Twoje centrum edycji i zarządzania zdjęciami
+            </p>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {photos.map((photo) => (
-            <div key={photo.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="aspect-w-1 aspect-h-1">
-                <img
-                  src={photoSrcMap[photo.id] ?? photo.url}
-                  alt={photo.title}
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-              <div className="p-4">
-                <h4 className="text-sm font-medium text-gray-900 truncate">
-                  {photo.title}
-                </h4>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(photo.created_at).toLocaleDateString()}
-                </p>
-              </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-          ))}
+            <div>
+              <div className="text-slate-400 text-sm">Wszystkich zdjęć</div>
+              <div className="text-3xl font-bold text-white">{loading ? '...' : photos.length}</div>
+            </div>
+          </div>
         </div>
-      )}
 
-      {!loading && photos.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">Nie masz jeszcze żadnych zdjęć. Prześlij swoje pierwsze zdjęcie powyżej!</p>
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-slate-400 text-sm">Rozmiar galerii</div>
+              <div className="text-3xl font-bold text-white">{loading ? '...' : totalSize.toFixed(1)} MB</div>
+            </div>
+          </div>
         </div>
-      )}
+
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-slate-400 text-sm">Status</div>
+              <div className="text-2xl font-bold text-green-400">Aktywny</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50 shadow-xl">
+        <h4 className="text-xl font-bold text-white mb-6">Szybkie akcje</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={() => navigate('/upload')}
+            className="group flex items-center gap-4 p-6 bg-slate-700/30 hover:bg-gradient-to-br hover:from-green-500/20 hover:to-emerald-600/20 rounded-xl border border-slate-600/30 hover:border-green-500/50 transition-all duration-300"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <div className="text-lg font-semibold text-white group-hover:text-green-400 transition-colors">Prześlij nowe zdjęcie</div>
+              <div className="text-sm text-slate-400">Dodaj zdjęcia do swojej biblioteki</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/library')}
+            className="group flex items-center gap-4 p-6 bg-slate-700/30 hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-purple-600/20 rounded-xl border border-slate-600/30 hover:border-blue-500/50 transition-all duration-300"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <div className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">Przeglądaj bibliotekę</div>
+              <div className="text-sm text-slate-400">Zobacz i edytuj swoje zdjęcia</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Tips Section */}
+      <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/30">
+        <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Wskazówki
+        </h4>
+        <ul className="space-y-2 text-slate-400">
+          <li className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span>Użyj zakładki <strong className="text-white">Upload</strong> aby dodać nowe zdjęcia</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span>W zakładce <strong className="text-white">Biblioteka</strong> znajdziesz wszystkie swoje zdjęcia</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span>Kliknij na dowolne zdjęcie w bibliotece aby je edytować</span>
+          </li>
+        </ul>
+      </div>
     </div>
   );
 };

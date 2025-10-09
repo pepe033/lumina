@@ -5,6 +5,8 @@ import Layout from './components/Layout/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import UploadPage from './pages/UploadPage';
+import LibraryPage from './pages/LibraryPage';
 import EditorPage from './pages/EditorPage';
 import './App.css';
 
@@ -64,6 +66,26 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <DashboardPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <UploadPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/library"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <LibraryPage />
                   </Layout>
                 </ProtectedRoute>
               }
