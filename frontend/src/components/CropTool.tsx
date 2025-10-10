@@ -224,86 +224,87 @@ const CropTool: React.FC<CropToolProps> = ({ imageWidth, imageHeight, onCropAppl
       {/* Crop area with grid */}
       <div
         ref={containerRef}
-        className="absolute cursor-move"
+        className="absolute"
         style={{
           left: cropArea.x,
           top: cropArea.y,
           width: cropArea.width,
           height: cropArea.height,
         }}
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) {
-            handleMouseDown(e, 'move');
-          }
-        }}
-        onTouchStart={(e) => {
-          if (e.target === e.currentTarget) {
-            handleTouchStart(e, 'move');
-          }
-        }}
       >
         {/* Border */}
-        <div className="absolute inset-0 border-2 border-white shadow-lg" />
+        <div className="absolute inset-0 border-2 border-white shadow-lg pointer-events-none" />
 
         {/* Rule of thirds grid */}
-        <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
+        <svg className="absolute inset-0 pointer-events-none z-5" width="100%" height="100%">
           <line x1="33.33%" y1="0" x2="33.33%" y2="100%" stroke="white" strokeWidth="1" opacity="0.5" />
           <line x1="66.66%" y1="0" x2="66.66%" y2="100%" stroke="white" strokeWidth="1" opacity="0.5" />
           <line x1="0" y1="33.33%" x2="100%" y2="33.33%" stroke="white" strokeWidth="1" opacity="0.5" />
           <line x1="0" y1="66.66%" x2="100%" y2="66.66%" stroke="white" strokeWidth="1" opacity="0.5" />
         </svg>
 
+        {/* Draggable area - fills the entire crop box */}
+        <div
+          className="absolute inset-0 cursor-move z-0"
+          onMouseDown={(e) => {
+            handleMouseDown(e, 'move');
+          }}
+          onTouchStart={(e) => {
+            handleTouchStart(e, 'move');
+          }}
+        />
+
         {/* Drag handles */}
         {/* Corners */}
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize z-10"
           style={{ left: -8, top: -8 }}
-          onMouseDown={(e) => handleMouseDown(e, 'tl')}
-          onTouchStart={(e) => handleTouchStart(e, 'tl')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'tl'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'tl'); }}
         />
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nesw-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nesw-resize z-10"
           style={{ right: -8, top: -8 }}
-          onMouseDown={(e) => handleMouseDown(e, 'tr')}
-          onTouchStart={(e) => handleTouchStart(e, 'tr')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'tr'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'tr'); }}
         />
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nesw-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nesw-resize z-10"
           style={{ left: -8, bottom: -8 }}
-          onMouseDown={(e) => handleMouseDown(e, 'bl')}
-          onTouchStart={(e) => handleTouchStart(e, 'bl')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'bl'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'bl'); }}
         />
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize z-10"
           style={{ right: -8, bottom: -8 }}
-          onMouseDown={(e) => handleMouseDown(e, 'br')}
-          onTouchStart={(e) => handleTouchStart(e, 'br')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'br'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'br'); }}
         />
 
         {/* Edges */}
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ns-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ns-resize z-10"
           style={{ left: '50%', top: -8, transform: 'translateX(-50%)' }}
-          onMouseDown={(e) => handleMouseDown(e, 't')}
-          onTouchStart={(e) => handleTouchStart(e, 't')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 't'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 't'); }}
         />
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ns-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ns-resize z-10"
           style={{ left: '50%', bottom: -8, transform: 'translateX(-50%)' }}
-          onMouseDown={(e) => handleMouseDown(e, 'b')}
-          onTouchStart={(e) => handleTouchStart(e, 'b')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'b'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'b'); }}
         />
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ew-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ew-resize z-10"
           style={{ left: -8, top: '50%', transform: 'translateY(-50%)' }}
-          onMouseDown={(e) => handleMouseDown(e, 'l')}
-          onTouchStart={(e) => handleTouchStart(e, 'l')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'l'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'l'); }}
         />
         <div
-          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ew-resize"
+          className="absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-ew-resize z-10"
           style={{ right: -8, top: '50%', transform: 'translateY(-50%)' }}
-          onMouseDown={(e) => handleMouseDown(e, 'r')}
-          onTouchStart={(e) => handleTouchStart(e, 'r')}
+          onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'r'); }}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, 'r'); }}
         />
       </div>
 
