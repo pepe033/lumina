@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { photoAPI } from '../services/api';
-import { Photo } from '../types';
+import { Photo, TextLayer, createTextLayer } from '../types';
 import CropTool, { CropArea } from '../components/CropTool';
 import SliderControl from '../components/SliderControl';
 import FilterGallery from '../components/FilterGallery';
-import { Filter, FILTERS } from '../constants/filters';
+import TextToolbar from '../components/TextToolbar';
+import TextEditor from '../components/TextEditor';
+import { Filter } from '../constants/filters';
+import { drawAllTextLayers } from '../utils/textRenderer';
 import {
   applyTemperature,
   applyHue,
@@ -50,8 +53,13 @@ const EditorPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [cropMode, setCropMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'color' | 'light' | 'effects' | 'filters'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'color' | 'light' | 'effects' | 'filters' | 'text'>('basic');
   const [activeFilterId, setActiveFilterId] = useState<string>('original');
+
+  // FAZA 4.2: State management dla warstw tekstowych
+  const [layers, setLayers] = useState<TextLayer[]>([]);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
+
   const [adjustments, setAdjustments] = useState<ImageAdjustments>({
     brightness: 0,
     contrast: 0,
@@ -78,6 +86,42 @@ const EditorPage: React.FC = () => {
   const originalImageRef = useRef<HTMLImageElement | null>(null);
   const uncropedImageRef = useRef<HTMLImageElement | null>(null); // Kopia przed cropem
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // FAZA 4.2: Funkcje zarządzające warstwami tekstowymi
+  const addTextLayer = useCallback(() => {
+    const newLayer = createTextLayer({
+      x: 50,
+      y: 50,
+    });
+    setLayers(prev => [...prev, newLayer]);
+    setActiveLayerId(newLayer.id);
+  }, []);
+
+  const updateLayer = useCallback((id: string, updates: Partial<TextLayer>) => {
+    setLayers(prev => prev.map(layer =>
+      layer.id === id ? { ...layer, ...updates } : layer
+    ));
+  }, []);
+
+  const deleteLayer = useCallback((id: string) => {
+    setLayers(prev => prev.filter(layer => layer.id !== id));
+    if (activeLayerId === id) {
+      setActiveLayerId(null);
+    }
+  }, [activeLayerId]);
+
+  const duplicateLayer = useCallback((id: string) => {
+    const layerToDuplicate = layers.find(layer => layer.id === id);
+    if (!layerToDuplicate) return;
+
+    const duplicatedLayer = createTextLayer({
+      ...layerToDuplicate,
+      x: layerToDuplicate.x + 20,
+      y: layerToDuplicate.y + 20,
+    });
+    setLayers(prev => [...prev, duplicatedLayer]);
+    setActiveLayerId(duplicatedLayer.id);
+  }, [layers]);
 
   // Load photo data and image
   useEffect(() => {
@@ -342,9 +386,40 @@ const EditorPage: React.FC = () => {
     try {
       setSaving(true);
 
-      // Convert canvas to blob
+      // Create a temporary canvas for final composition
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = displayCanvas.width;
+      finalCanvas.height = displayCanvas.height;
+      const finalCtx = finalCanvas.getContext('2d');
+
+      if (!finalCtx) {
+        throw new Error('Failed to get canvas context');
+      }
+
+      // Draw the edited image
+      finalCtx.drawImage(displayCanvas, 0, 0);
+
+      // Draw all text layers on top
+      if (layers.length > 0) {
+        // Load all Google Fonts before rendering
+        const uniqueFonts = Array.from(new Set(layers.map(l => l.fontFamily)));
+        await Promise.all(uniqueFonts.map(font => {
+          const link = document.createElement('link');
+          link.href = `https://fonts.googleapis.com/css2?family=${font.replace(' ', '+')}:wght@400;700&display=swap`;
+          link.rel = 'stylesheet';
+          if (!document.querySelector(`link[href="${link.href}"]`)) {
+            document.head.appendChild(link);
+          }
+          return document.fonts.load(`${layers[0].fontSize}px "${font}"`);
+        }));
+
+        // Draw each text layer
+        drawAllTextLayers(finalCtx, layers);
+      }
+
+      // Convert final canvas to blob
       const blob = await new Promise<Blob>((resolve) => {
-        displayCanvas.toBlob((b) => {
+        finalCanvas.toBlob((b) => {
           if (b) resolve(b);
         }, 'image/jpeg', 0.95);
       });
@@ -548,7 +623,7 @@ const EditorPage: React.FC = () => {
         {/* Sidebar with editing tools - SCROLLABLE */}
         <div className="w-96 flex-shrink-0 bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col overflow-hidden">
           {/* Tabs Navigation - FIXED */}
-          <div className="grid grid-cols-5 border-b border-slate-700/50 flex-shrink-0">
+          <div className="grid grid-cols-6 border-b border-slate-700/50 flex-shrink-0">
             <button
               onClick={() => setActiveTab('basic')}
               className={`px-2 py-3 text-[10px] font-semibold transition-all flex flex-col items-center gap-1 ${
@@ -613,6 +688,19 @@ const EditorPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
               <span className="text-[9px] leading-none">Filtry</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('text')}
+              className={`px-2 py-3 text-[10px] font-semibold transition-all flex flex-col items-center gap-1 ${
+                activeTab === 'text'
+                  ? 'bg-slate-700/50 text-white border-b-2 border-red-500'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+              </svg>
+              <span className="text-[9px] leading-none">Tekst</span>
             </button>
           </div>
 
@@ -952,6 +1040,80 @@ const EditorPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* TAB: Tekst */}
+                {activeTab === 'text' && (
+                  <div>
+                    <h4 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h3a2 2 0 002-2V6a2 2 0 00-2-2zm-4 0H7a2 2 0 00-2 2v12a2 2 0 002 2h5m0-16v16" />
+                      </svg>
+                      <span>Warstwy Tekstowe</span>
+                    </h4>
+                    <div className="space-y-4">
+                      {/* Text layers list */}
+                      <div className="space-y-2">
+                        {layers.length === 0 && (
+                          <p className="text-slate-400 text-sm text-center">
+                            Brak warstw tekstowych. Dodaj nową warstwę tekstową, aby rozpocząć.
+                          </p>
+                        )}
+                        {layers.map(layer => (
+                          <div
+                            key={layer.id}
+                            className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3
+                            ${activeLayerId === layer.id
+                                ? 'bg-blue-500/20 border-blue-500'
+                                : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/50'
+                            }`}
+                            onClick={() => setActiveLayerId(layer.id)}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-white truncate">
+                                {layer.content}
+                              </p>
+                              <p className="text-xs text-slate-400 truncate">
+                                Pozycja: ({Math.round(layer.x)}, {Math.round(layer.y)})
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteLayer(layer.id);
+                              }}
+                              className="w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-all flex items-center justify-center"
+                            >
+                              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add text layer button */}
+                      <button
+                        onClick={addTextLayer}
+                        className="w-full rounded-lg p-2.5 text-xs font-medium bg-green-500 hover:bg-green-600 transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Dodaj tekst</span>
+                      </button>
+
+                      {/* Text Toolbar - pokazuje się gdy zaznaczona jest warstwa tekstowa */}
+                      {activeLayerId && layers.find(l => l.id === activeLayerId) && (
+                        <div className="border-t border-slate-700 pt-4 mt-4">
+                          <TextToolbar
+                            layer={layers.find(l => l.id === activeLayerId) || null}
+                            onUpdate={(id, updates) => updateLayer(id, updates)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions - visible on all tabs */}
                 <div>
                   <h4 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
@@ -1001,10 +1163,10 @@ const EditorPage: React.FC = () => {
 
         {/* Main editing area - STICKY POSITION */}
         <div className="flex-1 flex items-start justify-center overflow-visible min-h-0">
-          <div className="sticky top-4 bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-6">
+          <div className="sticky top-4 bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 relative">
             <canvas
               ref={displayCanvasRef}
-              className="max-w-full max-h-full h-auto rounded-lg shadow-2xl"
+              className="max-w-full max-h-full h-auto shadow-2xl"
               style={{ maxHeight: 'calc(100vh - 250px)', maxWidth: 'calc(100vw - 600px)' }}
             />
             {/* Hidden canvas for processing */}
@@ -1012,13 +1174,30 @@ const EditorPage: React.FC = () => {
 
             {/* Crop Tool Overlay */}
             {cropMode && displayCanvasRef.current && (
-              <div className="absolute inset-0">
+              <div className="absolute top-0 left-0" style={{ width: displayCanvasRef.current.width, height: displayCanvasRef.current.height }}>
                 <CropTool
                   imageWidth={displayCanvasRef.current.width}
                   imageHeight={displayCanvasRef.current.height}
                   onCropApply={handleCropApply}
                   onCropCancel={handleCropCancel}
                 />
+              </div>
+            )}
+
+            {/* Text layers - rendered on top of the image */}
+            {layers.length > 0 && (
+              <div className="absolute top-0 left-0" style={{ width: displayCanvasRef.current?.width || 0, height: displayCanvasRef.current?.height || 0 }}>
+                {layers.map(layer => (
+                  <TextEditor
+                    key={layer.id}
+                    layer={layer}
+                    onUpdate={(updates) => updateLayer(layer.id, updates)}
+                    onDelete={() => deleteLayer(layer.id)}
+                    onDuplicate={() => duplicateLayer(layer.id)}
+                    isActive={activeLayerId === layer.id}
+                    setActive={() => setActiveLayerId(layer.id)}
+                  />
+                ))}
               </div>
             )}
           </div>

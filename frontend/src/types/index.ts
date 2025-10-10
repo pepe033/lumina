@@ -65,3 +65,6 @@ export interface EditorState {
   rotation: number;
   scale: number;
 }
+
+// Layer Types
+export * from './layers';
