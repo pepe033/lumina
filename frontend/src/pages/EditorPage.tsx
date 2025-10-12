@@ -9,6 +9,7 @@ import TextToolbar from '../components/TextToolbar';
 import TextEditor from '../components/TextEditor';
 import StickerPanel from '../components/StickerPanel';
 import StickerEditor from '../components/StickerEditor';
+import LayersPanel from '../components/LayersPanel';
 import { Filter } from '../constants/filters';
 import { drawAllTextLayers } from '../utils/textRenderer';
 import { drawAllStickerLayers } from '../utils/stickerRenderer';
@@ -1225,7 +1226,7 @@ const EditorPage: React.FC = () => {
             <canvas
               ref={displayCanvasRef}
               className="max-w-full max-h-full h-auto shadow-2xl"
-              style={{ maxHeight: 'calc(100vh - 250px)', maxWidth: 'calc(100vw - 600px)' }}
+              style={{ maxHeight: 'calc(100vh - 250px)', maxWidth: 'calc(100vw - 900px)' }}
             />
             {/* Hidden canvas for processing */}
             <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -1277,10 +1278,18 @@ const EditorPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* FAZA 6: Layers Panel - prawy sidebar */}
+        <LayersPanel
+          layers={layers}
+          activeLayerId={activeLayerId}
+          onLayerSelect={setActiveLayerId}
+          onLayerDelete={deleteLayer}
+          onLayerDuplicate={duplicateLayer}
+        />
       </div>
     </div>
   );
 };
 
 export default EditorPage;
-
