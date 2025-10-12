@@ -54,7 +54,7 @@ export function drawTextLayer(ctx: CanvasRenderingContext2D, layer: TextLayer): 
     textX = contentLeft;
   }
 
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'top'; // Use 'top' for consistency with CSS
 
   // Setup shadow
   if (layer.shadowBlur > 0 || layer.shadowX !== 0 || layer.shadowY !== 0) {
@@ -69,7 +69,7 @@ export function drawTextLayer(ctx: CanvasRenderingContext2D, layer: TextLayer): 
   const lineHeight = layer.fontSize * 1.2; // 120% of font size for line height
 
   lines.forEach((line, index) => {
-    const textY = layer.y + paddingY + index * lineHeight;
+    const textY = layer.y + paddingY + (index * lineHeight); // Simplified Y calculation for 'top' baseline
 
     // Render stroke (outline) if strokeWidth > 0
     if (layer.strokeWidth > 0) {
@@ -87,7 +87,7 @@ export function drawTextLayer(ctx: CanvasRenderingContext2D, layer: TextLayer): 
     // Render underline if needed
     if (layer.underline) {
       const metrics = ctx.measureText(line);
-      const underlineY = textY + layer.fontSize;
+      const underlineY = textY + layer.fontSize + 2; // Adjusted for top baseline
       let underlineX = textX;
       let underlineWidth = metrics.width;
 

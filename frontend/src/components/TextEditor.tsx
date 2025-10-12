@@ -286,6 +286,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     outline: 'none',
+    lineHeight: 1.2, // Match canvas rendering
   };
 
   const containerStyle: React.CSSProperties = {
@@ -332,7 +333,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
           {/* Drag handle - top bar */}
           <div
             onMouseDown={handleDragStart}
-            className="absolute -top-8 left-0 right-0 h-6 bg-blue-500/80 rounded-t cursor-move flex items-center justify-center text-white text-xs font-semibold"
+            className="absolute -top-8 left-0 right-0 h-6 bg-blue-500/80 cursor-move flex items-center justify-center text-white text-xs font-semibold"
             style={{ transform: `rotate(-${layer.rotation}deg)`, transformOrigin: 'bottom center' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
