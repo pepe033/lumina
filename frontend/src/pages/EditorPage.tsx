@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { photoAPI } from '../services/api';
-import { Photo, TextLayer, createTextLayer } from '../types';
+import { Photo, Layer, TextLayer, StickerLayer, createTextLayer, createStickerLayer } from '../types';
 import CropTool, { CropArea } from '../components/CropTool';
 import SliderControl from '../components/SliderControl';
 import FilterGallery from '../components/FilterGallery';
 import TextToolbar from '../components/TextToolbar';
 import TextEditor from '../components/TextEditor';
+import StickerPanel from '../components/StickerPanel';
+import StickerEditor from '../components/StickerEditor';
 import { Filter } from '../constants/filters';
 import { drawAllTextLayers } from '../utils/textRenderer';
+import { drawAllStickerLayers } from '../utils/stickerRenderer';
 import {
   applyTemperature,
   applyHue,
@@ -53,11 +56,11 @@ const EditorPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [cropMode, setCropMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'color' | 'light' | 'effects' | 'filters' | 'text'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'color' | 'light' | 'effects' | 'filters' | 'text' | 'stickers'>('basic');
   const [activeFilterId, setActiveFilterId] = useState<string>('original');
 
   // FAZA 4.2: State management dla warstw tekstowych
-  const [layers, setLayers] = useState<TextLayer[]>([]);
+  const [layers, setLayers] = useState<Layer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
 
   const [adjustments, setAdjustments] = useState<ImageAdjustments>({
@@ -97,10 +100,24 @@ const EditorPage: React.FC = () => {
     setActiveLayerId(newLayer.id);
   }, []);
 
-  const updateLayer = useCallback((id: string, updates: Partial<TextLayer>) => {
-    setLayers(prev => prev.map(layer =>
-      layer.id === id ? { ...layer, ...updates } : layer
-    ));
+  const addStickerLayer = useCallback((src: string) => {
+    const canvas = displayCanvasRef.current;
+    const newLayer = createStickerLayer({
+      src,
+      x: canvas ? canvas.width / 2 - 50 : 50,
+      y: canvas ? canvas.height / 2 - 50 : 50,
+    });
+    setLayers(prev => [...prev, newLayer]);
+    setActiveLayerId(newLayer.id);
+  }, []);
+
+  const updateLayer = useCallback((id: string, updates: Partial<Layer>) => {
+    setLayers(prev => prev.map(layer => {
+      if (layer.id === id) {
+        return { ...layer, ...updates } as Layer;
+      }
+      return layer;
+    }));
   }, []);
 
   const deleteLayer = useCallback((id: string) => {
@@ -115,7 +132,7 @@ const EditorPage: React.FC = () => {
     if (!layerToDuplicate) return;
 
     const duplicatedLayer = createTextLayer({
-      ...layerToDuplicate,
+      ...(layerToDuplicate as TextLayer),
       x: layerToDuplicate.x + 20,
       y: layerToDuplicate.y + 20,
     });
@@ -402,19 +419,26 @@ const EditorPage: React.FC = () => {
       // Draw all text layers on top
       if (layers.length > 0) {
         // Load all Google Fonts before rendering
-        const uniqueFonts = Array.from(new Set(layers.map(l => l.fontFamily)));
-        await Promise.all(uniqueFonts.map(font => {
-          const link = document.createElement('link');
-          link.href = `https://fonts.googleapis.com/css2?family=${font.replace(' ', '+')}:wght@400;700&display=swap`;
-          link.rel = 'stylesheet';
-          if (!document.querySelector(`link[href="${link.href}"]`)) {
-            document.head.appendChild(link);
-          }
-          return document.fonts.load(`${layers[0].fontSize}px "${font}"`);
-        }));
+        const textLayers = layers.filter(l => l.type === 'text') as TextLayer[];
+        const stickerLayers = layers.filter(l => l.type === 'sticker') as StickerLayer[];
 
-        // Draw each text layer
-        drawAllTextLayers(finalCtx, layers);
+        if (textLayers.length > 0) {
+          const uniqueFonts = Array.from(new Set(textLayers.map(l => l.fontFamily)));
+          await Promise.all(uniqueFonts.map(font => {
+            const link = document.createElement('link');
+            link.href = `https://fonts.googleapis.com/css2?family=${font.replace(' ', '+')}:wght@400;700&display=swap`;
+            link.rel = 'stylesheet';
+            if (!document.querySelector(`link[href="${link.href}"]`)) {
+              document.head.appendChild(link);
+            }
+            return document.fonts.load(`${textLayers[0].fontSize}px "${font}"`);
+          }));
+          drawAllTextLayers(finalCtx, textLayers);
+        }
+
+        if (stickerLayers.length > 0) {
+          await drawAllStickerLayers(finalCtx, stickerLayers);
+        }
       }
 
       // Convert final canvas to blob
@@ -623,7 +647,7 @@ const EditorPage: React.FC = () => {
         {/* Sidebar with editing tools - SCROLLABLE */}
         <div className="w-96 flex-shrink-0 bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col overflow-hidden">
           {/* Tabs Navigation - FIXED */}
-          <div className="grid grid-cols-6 border-b border-slate-700/50 flex-shrink-0">
+          <div className="grid grid-cols-7 border-b border-slate-700/50 flex-shrink-0">
             <button
               onClick={() => setActiveTab('basic')}
               className={`px-2 py-3 text-[10px] font-semibold transition-all flex flex-col items-center gap-1 ${
@@ -701,6 +725,19 @@ const EditorPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
               </svg>
               <span className="text-[9px] leading-none">Tekst</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('stickers')}
+              className={`px-2 py-3 text-[10px] font-semibold transition-all flex flex-col items-center gap-1 ${
+                activeTab === 'stickers'
+                  ? 'bg-slate-700/50 text-white border-b-2 border-yellow-500'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-[9px] leading-none">Naklejki</span>
             </button>
           </div>
 
@@ -1057,37 +1094,42 @@ const EditorPage: React.FC = () => {
                             Brak warstw tekstowych. Dodaj nową warstwę tekstową, aby rozpocząć.
                           </p>
                         )}
-                        {layers.map(layer => (
-                          <div
-                            key={layer.id}
-                            className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3
-                            ${activeLayerId === layer.id
-                                ? 'bg-blue-500/20 border-blue-500'
-                                : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/50'
-                            }`}
-                            onClick={() => setActiveLayerId(layer.id)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-white truncate">
-                                {layer.content}
-                              </p>
-                              <p className="text-xs text-slate-400 truncate">
-                                Pozycja: ({Math.round(layer.x)}, {Math.round(layer.y)})
-                              </p>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteLayer(layer.id);
-                              }}
-                              className="w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-all flex items-center justify-center"
+                        {layers.map(layer => {
+                          // Only show text layers in this list
+                          if (layer.type !== 'text') return null;
+
+                          return (
+                            <div
+                              key={layer.id}
+                              className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3
+                              ${activeLayerId === layer.id
+                                  ? 'bg-blue-500/20 border-blue-500'
+                                  : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/50'
+                              }`}
+                              onClick={() => setActiveLayerId(layer.id)}
                             >
-                              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">
+                                  {layer.content}
+                                </p>
+                                <p className="text-xs text-slate-400 truncate">
+                                  Pozycja: ({Math.round(layer.x)}, {Math.round(layer.y)})
+                                </p>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteLayer(layer.id);
+                                }}
+                                className="w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-all flex items-center justify-center"
+                              >
+                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
 
                       {/* Add text layer button */}
@@ -1105,12 +1147,28 @@ const EditorPage: React.FC = () => {
                       {activeLayerId && layers.find(l => l.id === activeLayerId) && (
                         <div className="border-t border-slate-700 pt-4 mt-4">
                           <TextToolbar
-                            layer={layers.find(l => l.id === activeLayerId) || null}
+                            layer={layers.find(l => l.id === activeLayerId && l.type === 'text') as TextLayer || null}
                             onUpdate={(id, updates) => updateLayer(id, updates)}
                           />
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* TAB: Stickers */}
+                {activeTab === 'stickers' && (
+                  <div>
+                    <h4 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Naklejki</span>
+                    </h4>
+                    <StickerPanel
+                      onStickerSelect={addStickerLayer}
+                      onUpload={addStickerLayer}
+                    />
                   </div>
                 )}
 
@@ -1186,18 +1244,35 @@ const EditorPage: React.FC = () => {
 
             {/* Text layers - rendered on top of the image */}
             {layers.length > 0 && (
-              <div className="absolute top-0 left-0" style={{ width: displayCanvasRef.current?.width || 0, height: displayCanvasRef.current?.height || 0 }}>
-                {layers.map(layer => (
-                  <TextEditor
-                    key={layer.id}
-                    layer={layer}
-                    onUpdate={(updates) => updateLayer(layer.id, updates)}
-                    onDelete={() => deleteLayer(layer.id)}
-                    onDuplicate={() => duplicateLayer(layer.id)}
-                    isActive={activeLayerId === layer.id}
-                    setActive={() => setActiveLayerId(layer.id)}
-                  />
-                ))}
+              <div className="absolute top-0 left-0" style={{ width: displayCanvasRef.current?.width || 0, height: displayCanvasRef.current?.height || 0, pointerEvents: 'none' }}>
+                {layers.map(layer => {
+                  if (layer.type === 'text') {
+                    return (
+                      <TextEditor
+                        key={layer.id}
+                        layer={layer}
+                        onUpdate={(updates) => updateLayer(layer.id, updates)}
+                        onDelete={() => deleteLayer(layer.id)}
+                        onDuplicate={() => duplicateLayer(layer.id)}
+                        isActive={activeLayerId === layer.id}
+                        setActive={() => setActiveLayerId(layer.id)}
+                      />
+                    );
+                  }
+                  if (layer.type === 'sticker') {
+                    return (
+                      <StickerEditor
+                        key={layer.id}
+                        sticker={layer as StickerLayer}
+                        onUpdate={(id, updates) => updateLayer(id, updates)}
+                        onDelete={() => deleteLayer(layer.id)}
+                        isActive={activeLayerId === layer.id}
+                        setActive={() => setActiveLayerId(layer.id)}
+                      />
+                    );
+                  }
+                  return null;
+                })}
               </div>
             )}
           </div>

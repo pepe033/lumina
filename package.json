@@ -11,5 +11,9 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "moveable": "^0.53.0",
+    "react-moveable": "^0.56.0"
   }
 }
